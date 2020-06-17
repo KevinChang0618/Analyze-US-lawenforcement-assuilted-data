@@ -1,0 +1,184 @@
+---
+title: "FinalProject_dataprocess"
+author: "Yujui Chang"
+date: "2020/3/30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+assaulttime <- read_csv("../data/LEOKA_ASSAULT_TIME_WEAPON_INJURY_1995_2018.csv")
+#glimpse(assaulttime)
+```
+
+- select columns we would use
+```{r}
+assaulttime %>%
+  select(-PUB_AGENCY_NAME, -PUB_AGENCY_UNIT, -DIVISION_NAME, -REGION_NAME, -COUNTY_NAME, -AGENCY_TYPE_NAME) ->
+  new_assaulttime
+
+#fix data
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " under", "_under") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " from", "_from") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " 100,000 or over", "_100,000 or over") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " 1,000,000 or over", "_1,000,000 or over") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, "Non-MSA State Police", "Non-MSA State Police_") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, "MSA State Police", "MSA State Police_") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " Samoa\\)", " Samoa\\)_") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+
+  new_assaulttime %>%
+    rename(CITYTYPE_POPULATION = POPULATION_GROUP_DESC) ->
+  new_assaulttime
+  
+  separate(new_assaulttime, CITYTYPE_POPULATION, c("CITY_TYPE","POPULATION"),"_") -> new_assaulttime
+  
+  new_assaulttime %>%
+    mutate(year_state = paste(DATA_YEAR,STATE_ABBR)) ->
+  new_assaulttime
+
+  
+  write.csv(new_assaulttime,
+            file="..\\output\\new_assaulttime.csv", 
+            row.names = FALSE)  
+```
+
+- Fix data for tab1.
+```{r}
+new_assaulttime %>%
+  group_by(year_state) %>%
+  summarise(sum(TIME_0001_0200_CNT,TIME_0201_0400_CNT,TIME_0401_0600_CNT,TIME_0601_0800_CNT,TIME_0801_1000_CNT,TIME_1001_1200_CNT,TIME_1201_1400_CNT,TIME_1401_1600_CNT,TIME_1601_1800_CNT,TIME_1801_2000_CNT,TIME_2001_2200_CNT,TIME_2201_0000_CNT)) ->
+  state_total_assault
+
+str_replace(state_total_assault$year_state, " ", "_") -> state_total_assault$year_state
+
+separate(state_total_assault, year_state, c("year", "state"), "_") -> state_total_assault
+names(state_total_assault)[3]="crime_numbers"
+# count crime_number for each state, each year.
+
+state_total_assault %>%
+  group_by(year) %>%
+  summarise(sum(crime_numbers)) -> all_total_assault
+
+names(all_total_assault)[2]="crime_numbers"
+# count crime_number for all U.S each year.
+
+
+
+write.csv(state_total_assault, 
+          file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\state_assault.csv", 
+          row.names = FALSE)
+write.csv(all_total_assault, 
+          file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\US_assault.csv", 
+          row.names = FALSE)
+```
+
+- Fix data for tab2
+```{r}
+new_assaulttime_2 <- subset(new_assaulttime, select= -c(CITY_TYPE,POPULATION, LEOKA_FELONY_KILLED, LEOKA_ACCIDENT_KILLED, FIREARM_INJURY_CNT, FIREARM_NO_INJURY_CNT, KNIFE_INJURY_CNT, KNIFE_NO_INJURY_CNT, HANDS_FISTS_FEET_INJURY_CNT, HANDS_FISTS_FEET_NO_INJURY_CNT, OTHER_INJURY_CNT, OTHER_NO_INJURY_CNT,year_state))
+                           
+  new_assaulttime_2 %>%
+    pivot_longer(-c(DATA_YEAR,STATE_ABBR), names_to = "Timezone", values_to = "count") ->
+    new_assaulttime_2
+  
+  new_assaulttime_2 %>%
+    group_by(DATA_YEAR,STATE_ABBR,Timezone) %>%
+    summarise(sum(count)) ->
+  new_assaulttime_2
+  
+  str_extract(new_assaulttime_2$Timezone, "_([0-9]*)_([0-9]*)") -> new_assaulttime_2$Timezone
+  str_replace(new_assaulttime_2$Timezone, "_", "") -> new_assaulttime_2$Timezone
+  str_replace(new_assaulttime_2$Timezone, "_", "~") -> new_assaulttime_2$Timezone
+  
+  rename(new_assaulttime_2, year = DATA_YEAR, state = STATE_ABBR, count = `sum(count)`)->
+    new_assaulttime_2
+  
+  new_assaulttime_2 %>%
+    group_by(year,Timezone) %>%
+    summarize(sum(count)) ->
+  new_assaulttime_2_all
+  
+  rename(new_assaulttime_2_all, count = `sum(count)`)->
+    new_assaulttime_2_all
+
+
+  
+  write.csv(new_assaulttime_2,
+            file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\state_assault_timezone.csv", 
+            row.names = FALSE)
+  write.csv(new_assaulttime_2_all, 
+            file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\US_assault_timezone.csv", 
+            row.names = FALSE)
+  
+  # all us TIMEZONE.
+  # new_assaulttime_2_all %>%
+  #  filter(year== "1995") %>%
+  #  ggplot(aes(x= Timezone, y= `sum(count)`, group=1))+
+  #  geom_point()+
+  #  geom_line()+
+  #  geom_vline(xintercept = 6, lty=2, col=2 )+
+  #  theme_bw()
+
+# each state 
+# new_assaulttime_2 %>%
+   # filter(DATA_YEAR== "1995" && STATE_ABBR == "SC") %>%
+   # ggplot(aes(x= Timezone, y= count, group=1))+
+   # geom_point()+
+   # geom_line()+
+   # geom_vline(xintercept = 6, lty=2, col=2 )+
+   # theme_bw()
+
+# 06~18: AM or 00~12
+# 18~06: PM or 12~00
+```
+
+- Fix data for tab3
+```{r}
+library(lubridate)
+# All US daytime (6:01am-6:00pm) and nightime (6:01pm-6:00am)
+new_assaulttime_2_all %>% filter(Timezone == c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> USnightcrime
+new_assaulttime_2_all %>% filter(Timezone != c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> USdaytimecrime
+USnightcrime %>% group_by(year) %>% summarise(nightcount = sum(count)) -> USnightcrime
+USdaytimecrime %>% group_by(year) %>% summarise(daycount = sum(count)) -> USdaytimecrime
+full_join(USdaytimecrime,USnightcrime) -> timecount
+write.csv(timecount,
+            file="..\\output\\US_timecount.csv", 
+            row.names = FALSE)
+#t.test(timecount$daycount,timecount$nightcount)
+
+# State daytime and nightime crime
+new_assaulttime_2 %>% filter(Timezone == c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> statenightcrime
+new_assaulttime_2 %>% filter(Timezone != c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> statedaycrime
+statenightcrime %>% group_by(year,state) %>% summarise(nightcount = sum(count)) -> statenightcrime
+statedaycrime %>% group_by(year,state) %>% summarise(daycount = sum(count)) -> statedaycrime
+full_join(statedaycrime,statenightcrime) -> statetimecount
+write.csv(statetimecount,
+            file="..\\output\\state_timecount.csv", 
+            row.names = FALSE)
+
+
+#statetimecount %>% group_by(state) %>% 
+#  nest() -> nestdf
+  #t.test(nestdf$data[[1]]$daycount,nestdf$data[[1]]$nightcount)
+```
+
+-To make a map in r, we need  USA latitide and longitude information in the dataset. 
+```{r}
+gi <-read_csv("../data/geo_info_us.csv")
+gi
+```
+
+```{r}
+
+```
+

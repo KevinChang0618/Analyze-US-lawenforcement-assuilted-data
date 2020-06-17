@@ -1,0 +1,61 @@
+---
+title: "data_process_tab3"
+author: "Yujui Chang"
+date: "2020/5/3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+- Fix data for tab3
+```{r}
+library(lubridate)
+library(tidyverse)
+# All US daytime (6:01am-6:00pm) and nightime (6:01pm-6:00am)
+# load data
+read_csv("../output/US_assault_timezone.csv") -> new_assaulttime_2_all
+
+# filter US nighttime crime
+
+new_assaulttime_2_all %>% filter(Timezone == c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> USnightcrime
+
+USnightcrime %>% group_by(year) %>% summarise(nightcount = sum(count)) -> USnightcrime
+
+# filter US daytime crime
+new_assaulttime_2_all %>% filter(Timezone != c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> USdaytimecrime
+
+USdaytimecrime %>% group_by(year) %>% summarise(daycount = sum(count)) -> USdaytimecrime
+
+# total US daytime and nighttime crime by year
+full_join(USdaytimecrime,USnightcrime) -> timecount
+
+write.csv(timecount,
+            file="..\\output\\US_timecount.csv", 
+            row.names = FALSE)
+#t.test(timecount$daycount,timecount$nightcount)
+
+# State daytime and nightime crime
+# load data
+read_csv("../output/state_assault_timezone.csv") -> new_assaulttime_2
+
+# filter state nighttime crime
+new_assaulttime_2 %>% filter(Timezone == c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> statenightcrime
+statenightcrime %>% group_by(year,state) %>% summarise(nightcount = sum(count)) -> statenightcrime
+
+# filter state daytime crime 
+new_assaulttime_2 %>% filter(Timezone != c("0001~0200","0201~0400","0401~0600","1801~2000","2001~2200","2201~0000")) -> statedaycrime
+
+statedaycrime %>% group_by(year,state) %>% summarise(daycount = sum(count)) -> statedaycrime
+
+# total state daytime and nightime crime by year
+full_join(statedaycrime,statenightcrime) -> statetimecount
+
+write.csv(statetimecount,
+            file="..\\output\\state_timecount.csv", 
+            row.names = FALSE)
+#statetimecount %>% group_by(state) %>% 
+#  nest() -> nestdf
+  #t.test(nestdf$data[[1]]$daycount,nestdf$data[[1]]$nightcount)
+```

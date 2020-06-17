@@ -1,0 +1,84 @@
+---
+title: "Injuring parts and weapons kind"
+author: "Jingyi Xu"
+date: "4/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+tab4
+```{r}
+library(tidyverse)
+new_assaulttime <- read_csv("../output/new_assaulttime.csv")
+#glimpse(new_assaulttime)
+```
+
+Process the data
+```{r}
+new_assaulttime %>% select(c(DATA_YEAR,STATE_ABBR,FIREARM_INJURY_CNT,FIREARM_NO_INJURY_CNT,KNIFE_INJURY_CNT,KNIFE_NO_INJURY_CNT,HANDS_FISTS_FEET_INJURY_CNT,HANDS_FISTS_FEET_NO_INJURY_CNT,OTHER_INJURY_CNT,OTHER_NO_INJURY_CNT)) -> new_assaulttime_1
+
+new_assaulttime_1 %>%
+    pivot_longer(-c(DATA_YEAR,STATE_ABBR), names_to = "weapon", values_to = "count") ->
+    new_assaulttime_2
+
+new_assaulttime_2 %>%
+    group_by(DATA_YEAR,STATE_ABBR,weapon) %>%
+    summarise(sum(count)) ->
+  new_assaulttime_2
+
+new_assaulttime_2 %>% 
+  mutate(weapon = recode(weapon,FIREARM_INJURY_CNT = "firearm_injury",
+                         FIREARM_NO_INJURY_CNT = "firearm_not-injury",
+                         HANDS_FISTS_FEET_INJURY_CNT = "hands_injury",
+                        HANDS_FISTS_FEET_NO_INJURY_CNT = "hands_not-injury",
+                         KNIFE_INJURY_CNT = "knife_injury",
+                         KNIFE_NO_INJURY_CNT = "knife_not-injury",
+                         OTHER_INJURY_CNT = "other_injury",
+                         OTHER_NO_INJURY_CNT = "other_not-injury")) -> new_assaulttime_2
+
+separate(new_assaulttime_2, weapon, c("weaponkind", "if_injury"), "_") -> new_assaulttime_2
+
+new_assaulttime_2 %>% 
+  rename(year = DATA_YEAR, state = STATE_ABBR, count = `sum(count)`) -> new_assaulttime_2
+```
+
+Calculate the injury and not-injury numbers and try the plots
+```{r}
+# total injury by year and weaponkind
+us_injury <- new_assaulttime_2 %>% 
+           filter(if_injury == "injury") %>% 
+          group_by(year,weaponkind) %>% 
+          summarise(sum(count))
+state_injury <- new_assaulttime_2 %>% 
+            filter(if_injury == "injury") %>% 
+          group_by(year,state,weaponkind) %>% 
+           summarise(sum(count))
+
+#ggplot(injury,aes(x = year, y = `sum(count)`,color = weaponkind))+ geom_line() + labs(y = "count") + ggtitle("Injury")
+
+# total not-injury by year and weaponkind
+us_safe <- new_assaulttime_2 %>% filter(if_injury == "not-injury") %>% group_by(year,weaponkind) %>% summarise(sum(count))
+
+state_safe <- new_assaulttime_2 %>% filter(if_injury == "not-injury") %>% group_by(year,state, weaponkind) %>% summarise(sum(count))
+
+#ggplot(safe,aes(x = year, y = `sum(count)`, color = weaponkind)) + geom_line() + labs(y = "count") + ggtitle("No-injury")
+
+# output csv files
+write.csv(us_injury,
+            file="..\\output\\us_injury.csv", 
+            row.names = FALSE)
+write.csv(state_injury,
+            file="..\\output\\state_injury.csv", 
+            row.names = FALSE)
+write.csv(us_safe,
+            file="..\\output\\us_safe.csv", 
+            row.names = FALSE)
+write.csv(state_safe,
+            file="..\\output\\state_safe.csv", 
+            row.names = FALSE)
+
+```
+

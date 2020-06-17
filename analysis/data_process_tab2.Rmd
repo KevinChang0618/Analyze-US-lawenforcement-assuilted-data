@@ -1,0 +1,65 @@
+---
+title: "data_process_tab2"
+author: "Yujui Chang"
+date: "2020/5/3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+new_assaulttime <- read_csv("../output/new_assaulttime.csv")
+
+```
+
+- Fix data for tab2-1
+```{r}
+new_assaulttime_2 <- subset(new_assaulttime, select= -c(CITY_TYPE,POPULATION, LEOKA_FELONY_KILLED, LEOKA_ACCIDENT_KILLED, FIREARM_INJURY_CNT, FIREARM_NO_INJURY_CNT, KNIFE_INJURY_CNT, KNIFE_NO_INJURY_CNT, HANDS_FISTS_FEET_INJURY_CNT, HANDS_FISTS_FEET_NO_INJURY_CNT, OTHER_INJURY_CNT, OTHER_NO_INJURY_CNT,year_state))
+                           
+  new_assaulttime_2 %>%
+    pivot_longer(-c(DATA_YEAR,STATE_ABBR), names_to = "Time", values_to = "count") ->
+    new_assaulttime_2
+  # gathering data to easily count by each timezone
+  new_assaulttime_2 %>%
+    group_by(DATA_YEAR,STATE_ABBR,Time) %>%
+    summarise(sum(count)) ->
+  new_assaulttime_2
+  # sum for different state, year and timezone
+  str_extract(new_assaulttime_2$Time, "_([0-9]*)_([0-9]*)") -> new_assaulttime_2$Time
+  str_replace(new_assaulttime_2$Time, "_", "") -> new_assaulttime_2$Time
+  str_replace(new_assaulttime_2$Time, "_", "~") -> new_assaulttime_2$Time
+  
+  rename(new_assaulttime_2, year = DATA_YEAR, state = STATE_ABBR, count = `sum(count)`)->
+    new_assaulttime_2
+   # fix the data form better to read
+  
+  new_assaulttime_2 %>%
+    group_by(year,Time) %>%
+    summarize(sum(count)) ->
+  new_assaulttime_2_all
+  # sum for all US in different year
+  rename(new_assaulttime_2_all, count = `sum(count)`)->
+    new_assaulttime_2_all
+
+
+  
+  write.csv(new_assaulttime_2,
+            file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\state_assault_timezone.csv", 
+            row.names = FALSE)
+  write.csv(new_assaulttime_2_all, 
+            file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\US_assault_timezone.csv", 
+            row.names = FALSE)
+  
+
+# 06~18: AM or 00~12
+# 18~06: PM or 12~00
+```
+
+
+
+
+
+

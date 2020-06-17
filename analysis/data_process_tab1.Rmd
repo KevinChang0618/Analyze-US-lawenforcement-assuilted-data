@@ -1,0 +1,86 @@
+---
+title: "FinalProject_dataprocess"
+author: "Yujui Chang"
+date: "2020/3/30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+assaulttime <- read_csv("../data/LEOKA_ASSAULT_TIME_WEAPON_INJURY_1995_2018.csv")
+#glimpse(assaulttime)
+```
+
+- select columns we would use
+```{r}
+assaulttime %>%
+  select(-PUB_AGENCY_NAME, -PUB_AGENCY_UNIT, -DIVISION_NAME, -REGION_NAME, -COUNTY_NAME, -AGENCY_TYPE_NAME) ->
+  new_assaulttime
+
+#fix data. add _ to easily process
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " under", "_under") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " from", "_from") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " 100,000 or over", "_100,000 or over") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " 1,000,000 or over", "_1,000,000 or over") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, "Non-MSA State Police", "Non-MSA State Police_") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, "MSA State Police", "MSA State Police_") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+  str_replace(new_assaulttime$POPULATION_GROUP_DESC, " Samoa\\)", " Samoa\\)_") -> 
+    new_assaulttime$POPULATION_GROUP_DESC
+
+  new_assaulttime %>%
+    rename(CITYTYPE_POPULATION = POPULATION_GROUP_DESC) ->
+  new_assaulttime
+  
+  separate(new_assaulttime, CITYTYPE_POPULATION, c("CITY_TYPE","POPULATION"),"_") -> new_assaulttime
+  
+  new_assaulttime %>%
+    mutate(year_state = paste(DATA_YEAR,STATE_ABBR)) ->
+  new_assaulttime
+
+  
+  write.csv(new_assaulttime,
+            file="..\\output\\new_assaulttime.csv", 
+            row.names = FALSE)  
+```
+
+- Fix data for tab1.
+```{r}
+new_assaulttime %>%
+  group_by(year_state) %>%
+  summarise(sum(TIME_0001_0200_CNT,TIME_0201_0400_CNT,TIME_0401_0600_CNT,TIME_0601_0800_CNT,TIME_0801_1000_CNT,TIME_1001_1200_CNT,TIME_1201_1400_CNT,TIME_1401_1600_CNT,TIME_1601_1800_CNT,TIME_1801_2000_CNT,TIME_2001_2200_CNT,TIME_2201_0000_CNT)) ->
+  state_total_assault
+# sum the all crime_number for each state, year
+str_replace(state_total_assault$year_state, " ", "_") -> state_total_assault$year_state
+
+separate(state_total_assault, year_state, c("year", "state"), "_") -> state_total_assault
+names(state_total_assault)[3]="crime_numbers"
+# fix the dataframe
+
+
+state_total_assault %>%
+  group_by(year) %>%
+  summarise(sum(crime_numbers)) -> all_total_assault
+
+names(all_total_assault)[2]="crime_numbers"
+# count crime_number for all U.S each year.
+
+
+
+write.csv(state_total_assault, 
+          file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\state_assault.csv", 
+          row.names = FALSE)
+write.csv(all_total_assault, 
+          file="C:\\Users\\yurui\\Documents\\datascience\\final-project-superthree\\output\\US_assault.csv", 
+          row.names = FALSE)
+```
+
