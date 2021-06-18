@@ -1,4 +1,4 @@
-# My Final Project
+# About Project
 
 Edit this README file to be a more informative description of your final project.
 
