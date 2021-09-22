@@ -16,7 +16,8 @@ We use  R markdown to tidy the data into other forms that easy to analyze. We sp
 
 4. What does our dashboard show?
 
-First tab: 
-Second tab:
-Third tab:
-Fourth tabl:
+First tab: Relation between Crime numbers and Year in different states.  
+Second tab: Relation between Crime numbers and Times for different states comparing to the whole US.  
+Third tab: Use T.test to prove that the crime numbers have discrepancy between daytime and nighttime in different states.  
+Fourth tab: Relation between weaponkind and officer injury numbers for each year in different states.  
+Fifth tab: The map to show lawenforcement assulated in each years.
